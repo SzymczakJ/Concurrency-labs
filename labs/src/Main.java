@@ -2,35 +2,29 @@ public class Main {
     public static void main(String[] args) throws InterruptedException {
         Monitor sut;
         sut = new Monitor();
-        int bigCounter = 0;
-        int smallCounter = 0;
         Thread thread1 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 10; i++) {
-                    sut.increment(5);
+                for (;;) {
+                    sut.increment();
                 }
-                System.out.println(sut.bigCounter);
 
             }
         });
         Thread thread3 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 10; i++) {
-//                    System.out.println("trying to produce");
-                    sut.increment(1);
+                for (;;) {
+                    sut.increment();
                 }
-                System.out.println(sut.smallCounter);
 
             }
         });
         Thread thread2 = new Thread(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 10; i++) {
-//                    System.out.println("trying to consume");
-                    sut.decrement(3);
+                for (;;) {
+                    sut.decrement();
                 }
 
             }
