@@ -1,12 +1,12 @@
 public class Main {
     public static void main(String[] args) throws InterruptedException {
         Monitor sut;
-        sut = new Monitor();
+        sut = new Monitor(10);
         Thread thread1 = new Thread(new Runnable() {
             @Override
             public void run() {
                 for (;;) {
-                    sut.increment();
+                    sut.increment(true);
                 }
 
             }
@@ -15,7 +15,7 @@ public class Main {
             @Override
             public void run() {
                 for (;;) {
-                    sut.increment();
+                    sut.increment(false);
                 }
 
             }
@@ -24,7 +24,16 @@ public class Main {
             @Override
             public void run() {
                 for (;;) {
-                    sut.decrement();
+                    sut.decrement(true);
+                }
+
+            }
+        });
+        Thread thread4 = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {
+                    sut.decrement(false);
                 }
 
             }
@@ -32,10 +41,11 @@ public class Main {
         thread1.start();
         thread2.start();
         thread3.start();
+        thread4.start();
         thread2.join();
         thread1.join();
         thread3.join();
-        System.out.println(sut.variable);
+        thread4.join();
     }
 }
 // Dwóch producentów (P1 i P2) i konsument(K1). 1. Wchodzi P1 i produkuje(B = 1). 2. Wchodzi P2 i próbuje produkować, więc waituje(B = 1). 3. Wchodzi K1 i zjada(B = 0). 4. Wchodzi

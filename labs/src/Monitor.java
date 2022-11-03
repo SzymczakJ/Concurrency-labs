@@ -2,29 +2,33 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Monitor {
-    int variable = 0;
-    int bigCounter = 0;
-    int smallCounter = 0;
+    int bufferSize;
+    int bigIncrementCounter = 0;
+    int smallIncrementCounter = 0;
+    int bigDecrementCounter = 0;
+    int smallDecrementCounter = 0;
     Buffer buffer = new Buffer();
     ReentrantLock lock;
     Condition prodCond;
     Condition consCond;
 
-    Monitor() {
+    Monitor(int bufferSize) {
         lock = new ReentrantLock();
         prodCond = lock.newCondition();
         consCond = lock.newCondition();
+        this.bufferSize = bufferSize;
     }
-    public void decrement() {
+    public void decrement(boolean isDecrementBigger) {
+        int bufferChange = bufferChangeSize(isDecrementBigger);
         lock.lock();
         try {
             System.out.println("sitting in cons lock");
-            while (buffer.resource == 0) {
+            while (buffer.resource < bufferChange) {
                 System.out.println("waiting to cons");
                 consCond.await();
-
             }
-            buffer.resource--;
+            buffer.resource -= bufferChange;
+            countDecrementEntries(isDecrementBigger);
             System.out.print(buffer.resource);
             System.out.println(" consume");
             prodCond.signal();
@@ -35,21 +39,20 @@ public class Monitor {
         }
     }
 
-    public void increment() {
+    public void increment(boolean isIncrementBigger) {
+        int bufferChange = bufferChangeSize(isIncrementBigger);
         lock.lock();
         try {
-            System.out.println("sitting in prod lock");
-            while (buffer.resource > 0) {
+//            System.out.println("sitting in prod lock");
+//            System.out.println(bufferSize);
+//            System.out.println(buffer.resource);
+//            System.out.println(bufferChange);
+            while (buffer.resource + bufferChange > bufferSize) {
                 System.out.println("waiting to prod");
                 prodCond.await();
             }
-            buffer.resource++;
-//            if (howManyToProd == 5) {
-//                bigCounter++;
-//            }
-//            if (howManyToProd == 1) {
-//                smallCounter++;
-//            }
+            buffer.resource += bufferChange;
+            countIncrementEntries(isIncrementBigger);
             System.out.print(buffer.resource);
             System.out.println(" produce");
             consCond.signal();
@@ -58,6 +61,38 @@ public class Monitor {
         } finally {
             lock.unlock();
         }
+    }
+
+    int bufferChangeSize(boolean isBig) {
+        if (isBig) {
+            return 5;
+        } else {
+            return 1;
+        }
+    }
+
+    void countDecrementEntries(boolean isBig) {
+        if (isBig) {
+            bigDecrementCounter++;
+        } else {
+            smallDecrementCounter++;
+        }
+        System.out.print("big decrement counter: ");
+        System.out.println(bigDecrementCounter);
+        System.out.print("small decrement counter: ");
+        System.out.println(smallDecrementCounter);
+    }
+
+    void countIncrementEntries(boolean isBig) {
+        if (isBig) {
+            bigIncrementCounter++;
+        } else {
+            smallIncrementCounter++;
+        }
+        System.out.print("big increment counter: ");
+        System.out.println(bigDecrementCounter);
+        System.out.print("small increment counter: ");
+        System.out.println(smallIncrementCounter);
     }
 }
 
