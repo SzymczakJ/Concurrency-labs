@@ -1,7 +1,7 @@
 public class Main {
     public static void main(String[] args) throws InterruptedException {
         Monitor sut;
-        sut = new Monitor(10);
+        sut = new Monitor(60);
         Thread thread1 = new Thread(new Runnable() {
             @Override
             public void run() {

@@ -1,21 +1,29 @@
+import java.util.Random;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Monitor {
     int bufferSize;
-    int bigIncrementCounter = 0;
-    int smallIncrementCounter = 0;
-    int bigDecrementCounter = 0;
-    int smallDecrementCounter = 0;
+    long bigIncrementCounter = 0;
+    long smallIncrementCounter = 0;
+    long bigDecrementCounter = 0;
+    long smallDecrementCounter = 0;
+    Random random = new Random();
     Buffer buffer = new Buffer();
     ReentrantLock lock;
-    Condition prodCond;
-    Condition consCond;
+    Condition firstProdCond;
+    Condition secondaryProdCond;
+    Condition firstConsCond;
+    Condition secondaryConsCond;
+    boolean isFirstProdCondOccupied = false;
+    boolean isFirstConsCondOccupied = false;
 
     Monitor(int bufferSize) {
         lock = new ReentrantLock();
-        prodCond = lock.newCondition();
-        consCond = lock.newCondition();
+        firstConsCond = lock.newCondition();
+        secondaryConsCond = lock.newCondition();
+        firstProdCond = lock.newCondition();
+        secondaryProdCond = lock.newCondition();
         this.bufferSize = bufferSize;
     }
     public void decrement(boolean isDecrementBigger) {
@@ -23,15 +31,22 @@ public class Monitor {
         lock.lock();
         try {
             System.out.println("sitting in cons lock");
+            while (isFirstConsCondOccupied) {
+                System.out.println("waiting in secondary cons");
+                secondaryConsCond.await();
+            }
             while (buffer.resource < bufferChange) {
-                System.out.println("waiting to cons");
-                consCond.await();
+                System.out.println("waiting in first cons");
+                isFirstConsCondOccupied = true;
+                firstConsCond.await();
             }
             buffer.resource -= bufferChange;
             countDecrementEntries(isDecrementBigger);
-            System.out.print(buffer.resource);
+            System.out.println(buffer.resource);
             System.out.println(" consume");
-            prodCond.signal();
+            isFirstConsCondOccupied = false;
+            secondaryConsCond.signal();
+            firstProdCond.signal();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -43,19 +58,23 @@ public class Monitor {
         int bufferChange = bufferChangeSize(isIncrementBigger);
         lock.lock();
         try {
-//            System.out.println("sitting in prod lock");
-//            System.out.println(bufferSize);
-//            System.out.println(buffer.resource);
-//            System.out.println(bufferChange);
+            System.out.println("sitting in prod lock");
+            while (isFirstProdCondOccupied) {
+                System.out.println("waiting in secondary prod");
+                secondaryProdCond.await();
+            }
             while (buffer.resource + bufferChange > bufferSize) {
-                System.out.println("waiting to prod");
-                prodCond.await();
+                System.out.println("waiting in first prod");
+                isFirstProdCondOccupied = true;
+                firstProdCond.await();
             }
             buffer.resource += bufferChange;
             countIncrementEntries(isIncrementBigger);
             System.out.print(buffer.resource);
-            System.out.println(" produce");
-            consCond.signal();
+            System.out.println(" prod");
+            isFirstProdCondOccupied = false;
+            secondaryProdCond.signal();
+            firstConsCond.signal();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -65,9 +84,9 @@ public class Monitor {
 
     int bufferChangeSize(boolean isBig) {
         if (isBig) {
-            return 5;
+            return random.nextInt(10) + 20;
         } else {
-            return 1;
+            return random.nextInt(5);
         }
     }
 
